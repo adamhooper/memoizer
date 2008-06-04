@@ -1,0 +1,113 @@
+= Memoizer
+
+Caches results of long-running methods along with the SQL Query Cache.
+
+Typically, in an ActiveRecord class, you may have the following code:
+
+  class Thing < ActiveRecord::Base
+    def return_things
+      @return_things ||= do_something_that_takes_time()
+    end
+  end
+
+But what about class methods such as this:
+
+  class Thing < ActiveRecord::Base
+    def self.static_return_things
+      @static_return_things ||= do_something_that_takes_time()
+    end
+  end
+
+In such a case, +@static_return_things+ will be an attribute of the +Thing+
+class, not an attribute of a specific example as before. The lifetime of
++@static_return_things+ will be the same as the lifetime of the class: that is,
+forever.
+
+This is all very confusing. The take-away message is: there is no good way,
+in ActiveRecord, to cache return values from static functions.
+
+Until now.
+
+Example
+=======
+
+=== Caching the results of a static method
+
+  class Thing < ActiveRecord::Base
+    include Memoizer
+    def self.do_something_that_takes_time()
+      ...
+    end
+    memoize :do_something_that_takes_time
+  end
+
+  x = Thing.do_something_that_takes_time() # will take time
+  y = Thing.do_something_that_takes_time() # will use cached value
+
+=== Caching the results of a static method with arguments
+
+  class Thing < ActiveRecord::Base
+    include Memoizer
+    def self.do_something_that_takes_time(a, b)
+      ...
+    end
+    memoize :do_something_that_takes_time
+  end
+
+  x1 = Thing.do_something_that_takes_time(1, 2) # will take time
+  y1 = Thing.do_something_that_takes_time(2, 3) # will take time
+  x2 = Thing.do_something_that_takes_time(1, 2) # will use cached value
+  y2 = Thing.do_something_that_takes_time(2, 3) # will use cached value
+
+=== Caching the results of an instance method
+
+  class Thing < ActiveRecord::Base
+    include Memoizer
+    def do_something_that_takes_time()
+      ...
+    end
+    memoize :do_something_that_takes_time
+  end
+
+  a = Thing.new
+  b = Thing.new
+
+  x = a.do_something_that_takes_time() # will take time
+  y = b.do_something_that_takes_time() # will use cached value from a
+
+Watch out! In this case, all instances will return the same value. This begs
+the question: why is +do_something_that_takes_time+ an instance method in the
+first place?
+
+=== Caching within a module
+
+  module TimeTaker
+    include Memoizer
+    def do_something_that_takes_time()
+      ...
+    end
+    memoize :do_something_that_takes_time, :TimeTaker
+  end
+
+  class Thing < ActiveRecord::Base
+    include TimeTaker
+  end
+
+  class AnotherThing < ActiveRecord::Base
+    include TimeTaker
+  end
+
+  a = Thing.new
+  b = Thing.new
+
+  x = a.do_something_that_takes_time() # will take time
+  y = b.do_something_that_takes_time() # will use cached value from a
+
+(You may permute +include+ with +extend+ here. Both would have logical uses.)
+
+In this example, there is a +scope+ argument to the memoize function. Normally,
+the +scope+ is that of the class calling +memoize+. In this case, though, we
+want +Thing+ and +AnotherThing+ to store their memoized values in the same
+place. +:TimeTaker+ is the (somewhat arbitrary) name we choose.
+
+Copyright (c) 2008 Adam Hooper, released under the MIT license
