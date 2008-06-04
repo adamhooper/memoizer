@@ -17,6 +17,15 @@ class MemoizerTest < Test::Unit::TestCase
     end
   end
 
+  class MockRecordNonActiveRecord
+    include Memoizer
+    def long_running_method
+      @i ||= 0
+      return @i += 1
+    end
+    memoize :long_running_method
+  end
+
   class MockRecordWithMemoize < MockRecord
     include Memoizer
     memoize :long_running_method
@@ -91,14 +100,14 @@ class MemoizerTest < Test::Unit::TestCase
 
   def test_returns_cached_value_with_cache
     m = MockRecordWithMemoize.new
-    m.connection.cache do
+    ActiveRecord::Base.connection.cache do
       assert_equal 1, m.long_running_method
       assert_equal 1, m.long_running_method
     end
   end
 
   def test_works_with_static_method
-    MockRecordWithMemoizedStaticMethod.connection.cache do
+    ActiveRecord::Base.connection.cache do
       assert_equal 1, MockRecordWithMemoizedStaticMethod.long_running_method
       assert_equal 1, MockRecordWithMemoizedStaticMethod.long_running_method
     end
@@ -106,7 +115,7 @@ class MemoizerTest < Test::Unit::TestCase
 
   def test_ignores_cached_value_when_uncached
     m = MockRecordWithMemoize.new
-    m.connection.cache do
+    ActiveRecord::Base.connection.cache do
       assert_equal 1, m.long_running_method
       m.connection.uncached do
         assert_equal 2, m.long_running_method
@@ -118,7 +127,7 @@ class MemoizerTest < Test::Unit::TestCase
 
   def test_uncaches_when_needed
     m = MockRecordWithMemoize.new
-    m.connection.cache do
+    ActiveRecord::Base.connection.cache do
       assert_equal 1, m.long_running_method
       assert_equal 1, m.long_running_method
     end
@@ -127,7 +136,7 @@ class MemoizerTest < Test::Unit::TestCase
 
   def test_dirties_when_needed
     m = MockRecordWithMemoize.new
-    m.connection.cache do
+    ActiveRecord::Base.connection.cache do
       assert_equal 1, m.long_running_method
       m.connection.clear_query_cache
       assert_equal 2, m.long_running_method
@@ -137,7 +146,7 @@ class MemoizerTest < Test::Unit::TestCase
   def test_caches_per_class
     m1 = MockRecordWithMemoize.new
     m2 = MockRecord2WithMemoize.new
-    m1.connection.cache do
+    ActiveRecord::Base.connection.cache do
       assert_equal 1, m1.long_running_method
       assert_equal 11, m2.long_running_method
       assert_equal 1, m1.long_running_method
@@ -148,7 +157,7 @@ class MemoizerTest < Test::Unit::TestCase
   def test_caches_globally
     m1 = MockRecordWithGlobalMemoize.new
     m2 = MockRecord2WithGlobalMemoize.new
-    m1.connection.cache do
+    ActiveRecord::Base.connection.cache do
       assert_equal 1, m1.long_running_method
       assert_equal 1, m2.long_running_method
     end
@@ -158,7 +167,7 @@ class MemoizerTest < Test::Unit::TestCase
     m1 = MockRecordWithMemoize.new
     m2 = MockRecordChildWithMemoize.new
 
-    m1.connection.cache do
+    ActiveRecord::Base.connection.cache do
       assert_equal 1, m1.long_running_method
       assert_equal 1, m2.long_running_method
     end
@@ -166,7 +175,7 @@ class MemoizerTest < Test::Unit::TestCase
 
   def test_children_with_new_method_avoid_memoize
     m = MockRecordChildWithMemoizeAndMethod.new
-    m.connection.cache do
+    ActiveRecord::Base.connection.cache do
       assert_equal 21, m.long_running_method
       assert_equal 22, m.long_running_method
     end
@@ -176,10 +185,18 @@ class MemoizerTest < Test::Unit::TestCase
     m1 = MockRecordWithScopedMemoize.new
     m2 = MockRecordWithScopedMemoize2.new
     m3 = MockRecordWithSameScopedMemoize.new
-    m1.connection.cache do
+    ActiveRecord::Base.connection.cache do
       assert_equal 11, m1.long_running_method
       assert_equal 21, m2.long_running_method
       assert_equal 11, m3.long_running_method
+    end
+  end
+
+  def test_non_active_record
+    m = MockRecordNonActiveRecord.new
+    ActiveRecord::Base.connection.cache do
+      assert_equal 1, m.long_running_method
+      assert_equal 1, m.long_running_method
     end
   end
 end

@@ -65,6 +65,22 @@ quickly returned.
   x2 = Thing.do_something_that_takes_time(1, 2) # will use cached value
   y2 = Thing.do_something_that_takes_time(2, 3) # will use cached value
 
+=== Caching the results of a static method on a non-ActiveRecord object
+
+  class Thing
+    include Memoizer
+    def self.do_something_that_takes_time()
+      ...
+    end
+    memoize :do_something_that_takes_time
+  end
+
+  x = Thing.do_something_that_takes_time() # will take time
+  y = Thing.do_something_that_takes_time() # will use cached value
+
+This will call ActiveRecord::Base.connection to find which query cache to
+follow.
+
 === Caching the results of an instance method
 
   class Thing < ActiveRecord::Base

@@ -60,11 +60,19 @@ module Memoizer
     end
 
     def memoize_enabled
-      connection.query_cache_enabled
+      memoize_connection.query_cache_enabled
     end
 
     def memoize_piggyback_object
-      connection.instance_variable_get(:@query_cache)
+      memoize_connection.instance_variable_get(:@query_cache)
+    end
+
+    def memoize_connection
+      if respond_to?(:connection)
+        connection
+      else
+        ActiveRecord::Base.connection
+      end
     end
   end
 
