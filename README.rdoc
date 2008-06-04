@@ -28,8 +28,7 @@ in ActiveRecord, to cache return values from static functions.
 
 Until now.
 
-Example
-=======
+= Examples
 
 === Caching the results of a static method
 
