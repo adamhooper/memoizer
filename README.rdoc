@@ -28,6 +28,13 @@ in ActiveRecord, to cache return values from static functions.
 
 Until now.
 
+The Memoizer plugin stores return values from methods, using the same logic as
+Rails's query cache. The first time you call a method, it will take a long
+time. If the Rails query cache is enabled, the value will be stored there. Next
+time the method is called, as long as the query cache is still enabled and has
+not been cleared (e.g., by a database update), the cached value will be
+quickly returned.
+
 = Examples
 
 === Caching the results of a static method
